@@ -21,16 +21,20 @@ router.post('/', (req, res) => {
   const body = req.body;
   res.status(200).send('EVENT_RECEIVED'); // Always respond 200 fast!
 
-  if (body.entry) {
+  if (body.object === 'instagram' && body.entry) {
     for (const entry of body.entry) {
-      for (const change of entry.changes || []) {
-        const value = change.value;
-        if (value.messages) {
-          for (const msg of value.messages) {
-            if (msg.story) {
-              handleStoryReply(msg.from); // Story reply event
+      // Instagram Messaging Webhooks use entry.messaging
+      if (entry.messaging) {
+        for (const event of entry.messaging) {
+          // Ignore messages sent by our own bot (is_echo)
+          if (event.message && !event.message.is_echo) {
+            const senderId = event.sender.id;
+            
+            // Check if it's a story reply
+            if (event.message.reply_to && event.message.reply_to.story) {
+              handleStoryReply(senderId);
             } else {
-              handleDM(msg.from);         // Regular DM event
+              handleDM(senderId);         // Regular DM event
             }
           }
         }
