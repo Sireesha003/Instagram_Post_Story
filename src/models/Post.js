@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 
 const PostSchema = new mongoose.Schema({
+  accountId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   mediaUrl:     { type: String, required: true },  // image or video URL (must be public)
   caption:      { type: String, default: '' },
   mediaType: {

@@ -12,23 +12,38 @@ function startScheduler() {
         // Find all posts that are SCHEDULED and whose time has passed
         const posts = await Post.find({
             status: 'SCHEDULED',
-            scheduleTime: { $lte: now }  // $lte = less than or equal to right now
-        });
+            scheduleTime: { $lte: now }
+        }).populate('accountId'); // Get account details (token, id)
 
         if (posts.length === 0) { console.log('No posts to publish'); return; }
 
         for (const post of posts) {
             try {
-                console.log(`📤 Publishing post: ${post._id}`);
+                if (!post.accountId || !post.accountId.accessToken) {
+                    throw new Error('No linked account or access token found for this post');
+                }
+
+                console.log(`📤 Publishing post: ${post._id} for account: ${post.accountId.instagramUsername}`);
 
                 // Step 1: Create container
-                const containerId = await createMediaContainer(post.mediaUrl, post.caption, post.mediaType);
+                const containerId = await createMediaContainer(
+                    post.mediaUrl, 
+                    post.caption, 
+                    post.mediaType,
+                    post.accountId.accessToken,
+                    post.accountId.instagramAccountId
+                );
 
-                // Wait 5 seconds for Instagram to process media (required for videos/reels)
+                // Wait 5 seconds for Instagram to process media
                 await new Promise(resolve => setTimeout(resolve, 5000));
 
                 // Step 2: Publish
-                const instagramPostId = await publishMedia(containerId);
+                const instagramPostId = await publishMedia(
+                    containerId,
+                    post.accountId.accessToken,
+                    post.accountId.instagramAccountId
+                );
+                
                 console.log(`✅ Published! Instagram ID: ${instagramPostId}`);
 
                 post.status = 'PUBLISHED';
